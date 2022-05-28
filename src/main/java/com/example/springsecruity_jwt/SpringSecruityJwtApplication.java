@@ -3,6 +3,7 @@ package com.example.springsecruity_jwt;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+// gittest
 @SpringBootApplication
 public class SpringSecruityJwtApplication {
 
