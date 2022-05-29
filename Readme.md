@@ -100,34 +100,37 @@ public class PrincipalDetails implements UserDetails {
     private final Users user;
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
+    public Collection<? extends GrantedAuthority> getAuthorities() { // 해당 유저의 권한을 리턴하는 곳
         Collection<GrantedAuthority> authorities = new ArrayList<>();
         //...
         return authorities;
     }
 
     @Override
-    public String getPassword() {
+    public String getPassword() { // 해당 유저의 비밀번호 리턴
         return user.getPassword();
     }
 
     @Override
-    public String getUsername() {
+    public String getUsername() { // 해당 유저의 이름을 리턴
         return user.getUsername();
     }
 
     @Override
     public boolean isAccountNonExpired() {
+        // 해당 계정이 만료되지 않았는지 리턴(true: 만료 안됨)
         return true;
     }
 
     @Override
     public boolean isAccountNonLocked() {
+        // 해당 계정이 잠겨있지 않았는지 리턴(true: 잠기지 않음)
         return true;
     }
 
     @Override
     public boolean isCredentialsNonExpired() {
+        // 해당 계정의 비밀번호가 만료되지 않았는 리턴(true: 만료 안됨)
         return true;
     }
 
