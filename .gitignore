@@ -37,9 +37,9 @@ out/
 .vscode/
 
 ### JPA ###
-application.yml
-application.properties
+application.yml/
+application.properties/
 
 
 ### JWT ###
-/jwt/JwtProperties
+/jwt/JwtProperties.java
