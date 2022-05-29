@@ -136,6 +136,7 @@ public class PrincipalDetails implements UserDetails {
 
     @Override
     public boolean isEnabled() {
+    // 해당 계정이 활성화(사용가능)인 지 리턴 (true: 활성화)
         return true;
     }
 }
