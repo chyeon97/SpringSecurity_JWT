@@ -1,28 +1,27 @@
 package com.example.springsecruity_jwt.web.dto;
 
 import com.example.springsecruity_jwt.domain.userRepository.Users;
-import com.example.springsecruity_jwt.web.model.User;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.RequiredArgsConstructor;
+import lombok.*;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 @Getter
+@Data
 @NoArgsConstructor
 public class UserSaveRequestDto {
-    private User user = new User();
+    private String username;
+    private String password;
+    private String role;
 
     @Builder
     public UserSaveRequestDto(String username, String password, String role){
-        System.out.println("username: " + username);
-        user.setUsername(username);
-        user.setPassword(password);
-        user.setRole(role);
+        this.username=username;
+        this.password=password;
+        this.role=role;
     }
 
 
     // User 엔티티 클래스에 User 객체 넣기
-    public Users toEntity(){
-        return Users.builder().username(user.getUsername()).password(user.getPassword()).roles(user.getRole()).build();
+    public Users toEntity(BCryptPasswordEncoder bCryptPasswordEncoder){
+        return Users.builder().username(username).password(bCryptPasswordEncoder.encode(password)).roles(role).build();
     }
 }

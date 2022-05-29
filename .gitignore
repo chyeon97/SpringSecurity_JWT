@@ -39,3 +39,7 @@ out/
 ### JPA ###
 application.yml
 application.properties
+
+
+### JWT ###
+/jwt/JwtProperties

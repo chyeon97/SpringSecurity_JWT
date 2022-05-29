@@ -2,20 +2,21 @@
 
 ## 📁 디렉토리 구조
 
-| 폴더 / 파일 | 설명                 | 세부 폴더                  |
-|---------|--------------------|------------------------|
-| web     | 외부 요청/응답에 대한 전반적인 영역 | model, dto, controller |
-| service | 트랜잭션(@Transactional) | -                      |
-| domain  | 데이터 저장소에 접근하는 영역   | -                      |
-| config  | 시큐리티 설정         | - |
-
+| 폴더 / 파일 | 설명                   | 세부 폴더           |
+|---------|----------------------|-----------------|
+| web     | 외부 요청/응답에 대한 전반적인 영역 | dto, controller |
+| service | 트랜잭션(@Transactional) | -               |
+| domain  | 데이터 저장소에 접근하는 영역     | repository      |
+| config  | 시큐리티 설정              | auth            |
 
 ## 🛹 전체적인 흐름
+
 `JWT 토큰 발행을 위한 흐름`
 > 로그인 요청 > CORS 필터 > 유효한(DB에 존재하는) 사용자인지 확인 > JWT 토큰 발행 > HTTP 헤더에 JWT 토큰을 포함하여 클라언트로 전송
 
 `로그인 이후 사용자 인증의 흐름`
-> 클라이언트 요청 > CORS 필터 > HTTP 헤더에 JWT 토큰이 존재하는지 확인 > 유효한(DB에 존재하는) 사용자인지 확인 > 시큐리티 세션 공간에 authentication 객체를 저장 > 다음 시큐리티 필터로 이동
+> 클라이언트 요청 > CORS 필터 > HTTP 헤더에 JWT 토큰이 존재하는지 확인 > 유효한(DB에 존재하는) 사용자인지 확인 > 시큐리티 세션 공간에
+> authentication 객체를 저장 > 다음 시큐리티 필터로 이동
 
 ## 🔐 SpringSecurity
 
@@ -23,9 +24,9 @@
 
 ### 기본 용어
 
- ● `Principal` : 보호된 리소스에 접근하는 대상 (접근 주체)    
- ● `Authentication` : 접근 주체가 누구인지, 어플리케이션의 작업을 수행해도 되는 주체인지 확인하는 과정   
- ● `Authorization` : 해당 리소스에 대한 접근 가능한 권한을 가지고 있는지 확인하는 과정(인증 이후 수행)
+● `Principal` : 보호된 리소스에 접근하는 대상 (접근 주체)    
+● `Authentication` : 접근 주체가 누구인지, 어플리케이션의 작업을 수행해도 되는 주체인지 확인하는 과정   
+● `Authorization` : 해당 리소스에 대한 접근 가능한 권한을 가지고 있는지 확인하는 과정(인증 이후 수행)
 
 ### 구조 및 필터
 
@@ -44,24 +45,25 @@
 | ExceptionalTranslationFilter           | 보호된 요청을 처리하는 동안 발생할 수 있는 기대한 예외의 기본 라우팅과 위임을 처리함                                           |
 | FilterSecurityInterceptor              | 권한 부여와 관련한 결정을 AccessDecisionManger에게 위임해 권한 부여 결정 및 접근 제어 결정을 쉽게 만들어 줌                    |
 
-
 ### 📍 사용법
 
 1. dependency 추가
 
 ```
 dependencies {
-	compile 'org.springframework.security:spring-security-web:4.2.2.RELEASE'
-	compile 'org.springframework.security:spring-security-config:4.2.2.RELEASE'
+    implementation 'org.springframework.boot:spring-boot-starter-security' 
+    implementation group: 'com.auth0', name: 'java-jwt', version: '3.10.3'
+
 }
 ```
 
 2. Configuration 설정
 
 ````java
+
 @Configuration // 자바 기반의 설정 파일로 인식
 @EnableWebSecurity // spring security filter chain에 자동으로 등록 됨
-public class SecurityConfig extends WebSecurityConfigAdapter{
+public class SecurityConfig extends WebSecurityConfigAdapter {
     // configure메서드를 오버라이딩하여 사용하고자 하는 시큐리티 규칙을 작성함
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -72,13 +74,13 @@ public class SecurityConfig extends WebSecurityConfigAdapter{
             .formLogin().disable() // formLogin 요청 방식 비활성화
             .httpBasic().disable() // http basic 요청 방식 비활성화
             .addFilter(new JwtAuthenticationFilter(authenticationManager())) // 사용자 인증 확인 및 JWT 토큰 발행하는 필터 추가
-            .addFilter(new JwtAuthorizationFilter(authenticationManager(),userRepository)) // JWT 토큰 유효성 검사 및 시큐리티 세션에 Authentication 객체 저장하는 필터 추가
-            .authorizeRequests() // 보호된 리소스 URI에 접근할 수 있는 권한을 설정
+            .addFilter(new JwtAuthorizationFilter(authenticationManager(), userRepository)) // JWT 토큰 유효성 검사 및 시큐리티 세션에 Authentication 객체 저장하는 필터 추가
+            .authorizeRequests() // URL별 권한 관리를 설정하는 옵션의 시작점 => antMatchers 옵션을 사용할 수 있어짐
             // user라는 Role을 가진 Principal에 대한 인가 설정
             .antMatchers("/api/v1/user/**").access("hasRole('ROLE_USER') or hasRole('ROLE_MANAGER')  or hasRole('ROLE_ADMIN')")
             .antMatchers("/api/v1/manager/**").access("hasRole('ROLE_MANAGER') or hasRole('ROLE_ADMIN')")
             .antMatchers("/api/v1/admin/**").access("hasRole('ROLE_ADMIN')")
-            .anyRequest().permitAll();
+            .anyRequest().permitAll(); // 설정된 값들 이외 나머지 URL은 모두 접근 허용
     }
 }
 ````
@@ -90,12 +92,13 @@ public class SecurityConfig extends WebSecurityConfigAdapter{
 
 ```java
 package com.example.jwtstart.auth;
+
 //...
 @AllArgsConstructor
 public class PrincipalDetails implements UserDetails {
-    
-    private User user; 
-    
+
+    private User user;
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() { // 해당 유저의 권한을 리턴하는 곳
         Collection<GrantedAuthority> authorities = new ArrayList<>();
@@ -106,26 +109,27 @@ public class PrincipalDetails implements UserDetails {
     @Override
     public String getPassword() { // 해당 유저의 비밀번호 리턴
         return user.getPassword();
-    } 
+    }
 
     @Override
     public String getUsername() { // 해당 유저의 이름을 리턴
         return user.getUsername();
-    } 
+    }
 
     @Override
     public boolean isAccountNonExpired() { // 해당 계정이 만료되지 않았는지 리턴(true: 만료 안됨)
         return true;
-    } 
+    }
 
     @Override
     public boolean isAccountNonLocked() { // 해당 계정이 잠겨있지 않았는지 리턴(true: 잠기지 않음)
         return true;
-    } 
+    }
+
     @Override
     public boolean isCredentialsNonExpired() { // 해당 계정의 비밀번호가 만료되지 않았는 리턴(true: 만료 안됨)
         return true;
-    } 
+    }
 
     @Override
     public boolean isEnabled() { // 해당 계정이 활성화(사용가능)인 지 리턴 (true: 활성화)
@@ -135,21 +139,79 @@ public class PrincipalDetails implements UserDetails {
 
 ```
 
-
 4. UserDetailsService 구현
+
 > DB에서 유저 정보를 가져오는 역할   
 > 즉, loadUserByUsername()에서 DB의 유저 정보를 가져와서 구현한 UserService 형으로 사용자 정보를 반환하는 곳
 
 ```java
+
 @Service
 @RequiredArgsConstructor
 public class PrincipleDetailsService implements UserDetailsService {
     private final UserRepository userRepository;
+
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         User userEntity = userRepository.findByUsername(username);
-         return new PrincipalDetails(userEntity);
+        return new PrincipalDetails(userEntity);
     }
 }
 ```
 
+5. 로그인 요청 시 사용자 정보 확인 및 JWT 토큰 발행
+
+> UsernamePasswordAuthenticationFilter를 상속받아 구현
+
+````java
+
+@RequiredArgsConstructor
+// `/login` 요청해서 useranme, password를 전송하면(post방식) UsernamePasswordAuthenticationFilter 동작
+public class JwtAuthentiactionFilter extends UsernamePasswordAuthenticationFilter {
+
+    private final AuthenticationManager authenticationManager;
+
+    @Override
+    public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
+
+        try {
+            // 1. JSON 형식으로 클라이언트로부터 username, password를 받음
+            ObjectMapper om = new ObjectMapper();
+            User user = om.readValue(request.getInputStream(), User.class);
+
+            // 2. 1에서 받은 username과 password를 조합하여 UsernamePasswordAuthenticationToken 인스턴스를 만듦
+            UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword());
+            
+            // 3. 앞서 생성한 토큰 검증을 위해 AuthenticationManager의 인스턴스로 전달되고, 인증에 성공하면 Authentication 인스턴스를 리턴함
+            Authentication authentication = authenticationManager.authenticate(authenticationToken);
+            
+            // 4. Authentication 인스턴스를 세션에 저장 
+            return authentication;
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        return null;
+    }
+
+
+    @Override
+    // 5. attemptAuthentication 실행 후 인증이 정상적으로 수행 된 후 successfulAuthentication 함수가 실행됨
+    protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
+
+        PrincipalDetails principalDetails = (PrincipalDetails) authResult.getPrincipal(); // attemptAuthentication으로 부터 전달받은 Authentication 인스턴스를 통해 principal을 가져옴
+        
+        // 6. JWT 토큰 생성 
+        String jwtToken = JWT.create()
+            .withSubject("jwt_token") // 토큰명 설정
+            .withExpiresAt(new Date(System.currentTimeMillis() + (만료시간))) // 토큰 만료시간 설정
+            .withClaim("id", principalDetails.getUser().getId()) // claims(: 사용자에 대한 속성) 설정
+            .withClaim("username", principalDetails.getUser().getUsername())
+                .sign(Algorithm.HMAC256(SECRET_KEY)); // 서명 생성
+
+        response.addHeader("Authorization", "Bearer " + jwtToken); // HTTP 헤더에 "Authorization" : "Bearer ..." (Key-value) 값으로 클라이언트에게 응답함
+    }
+}
+
+````

@@ -35,7 +35,10 @@ dependencies {
     implementation 'com.oracle.database.security:oraclepki'
     implementation 'com.oracle.database.security:osdt_core'
 
-    implementation 'junit:junit:4.13.1'
+
+    implementation group: 'com.auth0', name: 'java-jwt', version: '3.10.3' // jwt
+    implementation 'junit:junit:4.13.1' //junit
+
 }
 
 tasks.named('test') {

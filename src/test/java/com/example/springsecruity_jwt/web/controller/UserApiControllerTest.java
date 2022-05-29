@@ -9,8 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.test.context.junit4.SpringRunner;
 
 import static org.junit.Assert.*;
@@ -28,6 +30,8 @@ public class UserApiControllerTest {
     @Autowired
     private UsersRepository usersRepository;
 
+    @Autowired
+    private BCryptPasswordEncoder bCryptPasswordEncoder;
     @After
     public void cleanup(){
         usersRepository.deleteAll();
@@ -35,12 +39,14 @@ public class UserApiControllerTest {
 
     @Test
     public void saveUserTest() throws Exception{
+
+
         // given
         String username = "박채연";
         String password = "test123";
         String roles = "ROLE_ADMIN";
 
-        UserSaveRequestDto requestDto = UserSaveRequestDto.builder().username(username).password(password).role(roles).build();
+        UserSaveRequestDto requestDto = UserSaveRequestDto.builder().username(username).password(bCryptPasswordEncoder.encode(password)).role(roles).build();
         requestDto.toString();
         String url = "http://localhost:"+port +"/signup";
 
