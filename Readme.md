@@ -45,7 +45,7 @@
 | ExceptionalTranslationFilter           | 보호된 요청을 처리하는 동안 발생할 수 있는 기대한 예외의 기본 라우팅과 위임을 처리함                                           |
 | FilterSecurityInterceptor              | 권한 부여와 관련한 결정을 AccessDecisionManger에게 위임해 권한 부여 결정 및 접근 제어 결정을 쉽게 만들어 줌                    |
 
-### 📍 사용법
+### 📍 JWT 토큰 발행 과정 구현
 
 1. dependency 추가
 
@@ -97,42 +97,42 @@ package com.example.jwtstart.auth;
 @AllArgsConstructor
 public class PrincipalDetails implements UserDetails {
 
-    private User user;
+    private final Users user;
 
     @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() { // 해당 유저의 권한을 리턴하는 곳
+    public Collection<? extends GrantedAuthority> getAuthorities() {
         Collection<GrantedAuthority> authorities = new ArrayList<>();
-        ...
+        //...
         return authorities;
     }
 
     @Override
-    public String getPassword() { // 해당 유저의 비밀번호 리턴
+    public String getPassword() {
         return user.getPassword();
     }
 
     @Override
-    public String getUsername() { // 해당 유저의 이름을 리턴
+    public String getUsername() {
         return user.getUsername();
     }
 
     @Override
-    public boolean isAccountNonExpired() { // 해당 계정이 만료되지 않았는지 리턴(true: 만료 안됨)
+    public boolean isAccountNonExpired() {
         return true;
     }
 
     @Override
-    public boolean isAccountNonLocked() { // 해당 계정이 잠겨있지 않았는지 리턴(true: 잠기지 않음)
+    public boolean isAccountNonLocked() {
         return true;
     }
 
     @Override
-    public boolean isCredentialsNonExpired() { // 해당 계정의 비밀번호가 만료되지 않았는 리턴(true: 만료 안됨)
+    public boolean isCredentialsNonExpired() {
         return true;
     }
 
     @Override
-    public boolean isEnabled() { // 해당 계정이 활성화(사용가능)인 지 리턴 (true: 활성화)
+    public boolean isEnabled() {
         return true;
     }
 }
@@ -153,7 +153,7 @@ public class PrincipleDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User userEntity = userRepository.findByUsername(username);
+        Users userEntity = userRepository.findByUsername(username);
         return new PrincipalDetails(userEntity);
     }
 }
@@ -177,7 +177,7 @@ public class JwtAuthentiactionFilter extends UsernamePasswordAuthenticationFilte
         try {
             // 1. JSON 형식으로 클라이언트로부터 username, password를 받음
             ObjectMapper om = new ObjectMapper();
-            User user = om.readValue(request.getInputStream(), User.class);
+            Users user = om.readValue(request.getInputStream(), Users.class);
 
             // 2. 1에서 받은 username과 password를 조합하여 UsernamePasswordAuthenticationToken 인스턴스를 만듦
             UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword());
@@ -211,6 +211,54 @@ public class JwtAuthentiactionFilter extends UsernamePasswordAuthenticationFilte
                 .sign(Algorithm.HMAC256(SECRET_KEY)); // 서명 생성
 
         response.addHeader("Authorization", "Bearer " + jwtToken); // HTTP 헤더에 "Authorization" : "Bearer ..." (Key-value) 값으로 클라이언트에게 응답함
+    }
+}
+
+````
+
+### 📍 로그인 이후 사용자 인증 과정 구현 방법
+
+JWT 토큰을 확인하고 권한을 부여함
+> BasicAuthenticationFilter를 상속받아 구현
+
+````java
+public class JwtAuthorizationFilter extends BasicAuthenticationFilter {
+
+    private  UsersRepository usersRepository;
+
+    public JwtAuthorizationFilter(AuthenticationManager authenticationManager, UsersRepository usersRepository) {
+        super(authenticationManager);
+        this.usersRepository = usersRepository;
+    }
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain) throws IOException, ServletException {
+        String jwtHeader = request.getHeader("Authorization"); // HTTP 헤더의 Authorization키의 값을 가져옴
+
+        // JWT 토큰이 비정상적인 경우
+        if(jwtHeader == null || !jwtHeader.startsWith("Bearer ")){
+            chain.doFilter(request,response); // 다음 필터체인으로 이동
+            return;
+        }
+
+        // JWT 토큰이 정상적인 경우
+        String jwtToken = jwtHeader.replace("Bearer ", ""); // Bearer를 제외한 실제 토큰 값만 추출
+        // JWT 검증 => 검증 실패 시 exception 발생, 통과는 서명이 완료되었다는 것을 의미함
+        String username = JWT.require(Algorithm.HMAC256(JwtProperties.SECRET)).build().verify(jwtToken).getClaim("username").asString();
+
+        // username이 비어있지 않은지 체크
+        if(username != null && !username.equals("")){
+            Users user = usersRepository.findByUsername(username);
+            PrincipalDetails principalDetails = new PrincipalDetails(user);
+
+            // 이미 JWT 서명으로 무결성을 검증했으므로, username을 가지고 강제로 Authentication 인스턴스를 만듦
+            Authentication authentication = new UsernamePasswordAuthenticationToken(principalDetails.getUsername(), null, principalDetails.getAuthorities() );
+
+            // 시큐리티를 저장할 수 있는 세션 공간을 찾아 => authentication을 넣어줌 : 강제로 시큐리티의 세션에 접근하여앞서만든 authentication 객체를 저장함
+            SecurityContextHolder.getContext().setAuthentication(authentication);
+
+            chain.doFilter(request,response); // 다음 필터체인으로 이동
+        }
     }
 }
 
