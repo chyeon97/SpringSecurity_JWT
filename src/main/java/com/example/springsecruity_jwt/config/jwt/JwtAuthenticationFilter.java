@@ -1,8 +1,9 @@
 package com.example.springsecruity_jwt.config.jwt;
 
-import com.auth0.jwt.JWT;
-import com.auth0.jwt.algorithms.Algorithm;
 import com.example.springsecruity_jwt.config.auth.PrincipalDetails;
+import com.example.springsecruity_jwt.constants.StatusCode;
+import com.example.springsecruity_jwt.domain.tokenRepository.Token;
+import com.example.springsecruity_jwt.domain.tokenRepository.TokenRepository;
 import com.example.springsecruity_jwt.domain.userRepository.Users;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +18,14 @@ import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Date;
+
 
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilter {
 
     private final AuthenticationManager authenticationManager;
+    private final TokenRepository tokenRepository;
+    private  final JwtTokenProvider jwtTokenProvider;
 
     @Override
     public Authentication attemptAuthentication(HttpServletRequest request, HttpServletResponse response) throws AuthenticationException {
@@ -33,10 +36,6 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
 
             UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(user.getUsername(), user.getPassword());
             Authentication authentication = authenticationManager.authenticate(authenticationToken);
-            PrincipalDetails principalDetails = (PrincipalDetails) authentication.getPrincipal();
-
-            System.out.println(principalDetails.getUser().getUsername());
-
             return authentication;
 
         } catch (IOException e) {
@@ -46,17 +45,29 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         return null;
     }
 
+
+
     @Override
     protected void successfulAuthentication(HttpServletRequest request, HttpServletResponse response, FilterChain chain, Authentication authResult) throws IOException, ServletException {
 
         PrincipalDetails principalDetails = (PrincipalDetails) authResult.getPrincipal();
 
-        String jwtToken = JWT.create()
-            .withSubject("jwt_token")
-            .withExpiresAt(new Date(System.currentTimeMillis() + JwtProperties.EXPIRATION_TIME))
-            .withClaim("username", principalDetails.getUser().getUsername())
-            .sign(Algorithm.HMAC256(JwtProperties.SECRET));
+        String jwtToken = jwtTokenProvider.creatAccessToken(principalDetails.getUsername()); // accessToken 발급
+        String refreshToken = jwtTokenProvider.createRefreshToken(); // refreshToken 발급
+
+        Token token = Token.builder().username(principalDetails.getUsername()).token(refreshToken).build(); // refreshToken DB에 저장
+        tokenRepository.save(token);
 
         response.addHeader(JwtProperties.HEADER_STRING, JwtProperties.TOKEN_PREFIX + jwtToken);
+        response.addHeader(JwtProperties.REFRESH_HEADER_STRING, refreshToken);
+    }
+
+
+    @Override
+    protected void unsuccessfulAuthentication(HttpServletRequest request, HttpServletResponse response, AuthenticationException failed) throws IOException, ServletException {
+        StatusCode statusCode = new StatusCode("로그인 실패", 1);
+        ObjectMapper om = new ObjectMapper();
+        String result = om.writeValueAsString(statusCode);
+        response.getWriter().write(result);
     }
 }

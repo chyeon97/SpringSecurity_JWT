@@ -1,6 +1,7 @@
 package com.example.springsecruity_jwt.domain.userRepository;
 
 import lombok.Builder;
+import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -12,6 +13,7 @@ import java.util.List;
 @Getter
 @NoArgsConstructor
 @Entity
+@Data // tostring 테스트용
 @Table(name= "USER_TEST")
 public class Users {
 
