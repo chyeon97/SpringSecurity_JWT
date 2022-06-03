@@ -24,8 +24,8 @@ protected void successfulAuthentication(HttpServletRequest request, HttpServletR
     Token token = Token.builder().username(principalDetails.getUsername()).token(refreshToken).build(); // refreshToken DB에 저장
     tokenRepository.save(token);
 
-    response.addHeader(JwtProperties.HEADER_STRING, JwtProperties.TOKEN_PREFIX + jwtToken);
-    response.addHeader(JwtProperties.REFRESH_HEADER_STRING, refreshToken);
+    response.addHeader("Authorization", "Bearer " + jwtToken);
+    response.addHeader("Refresh_token", refreshToken);
     
     }
 
@@ -89,7 +89,7 @@ protected void doFilterInternal(HttpServletRequest request, HttpServletResponse 
 
     ...
 
-    String accessToken = jwtHeader.replace(JwtProperties.TOKEN_PREFIX, ""); // Access Token만 추출
+    String accessToken = jwtHeader.replace("Bearer ", ""); // Access Token만 추출
 
     if (jwtTokenProvider.tokenValid(accessToken)) { // AccessToken 유효성(만료시간) 검사
     String username = jwtTokenProvider.getVerifyToken(accessToken).getClaim("username").asString();
@@ -114,10 +114,10 @@ protected void doFilterInternal(HttpServletRequest request, HttpServletResponse 
         System.out.println("[WARN] Expired Access Token");
 
         // 클라이언트가 Refresh Token을 갖고 요청한 경우
-        if(request.getHeader(JwtProperties.REFRESH_HEADER_STRING) != null){
+        if(request.getHeader("Refresh_token") != null){
     
             // Refresh Token 유효성(만료시간) 검사
-            String refresh = request.getHeader(JwtProperties.REFRESH_HEADER_STRING);
+            String refresh = request.getHeader("Refresh_token");
             String username = JWT.decode(accessToken).getClaim("username").asString(); // Access Token에서 username만 추출
             
             // DB의 Refresh와 클라이언트에서 받은 Refresh 비교
@@ -126,7 +126,7 @@ protected void doFilterInternal(HttpServletRequest request, HttpServletResponse 
             
                 if(jwtTokenProvider.tokenValid(refresh)){ // refresh token 만료 여부 확인
                 String reissueAccessToken = jwtTokenProvider.creatAccessToken(username); // 새로운 Access Token 발행
-                response.addHeader(JwtProperties.HEADER_STRING, JwtProperties.TOKEN_PREFIX + reissueAccessToken); // 클라이언트로 전송
+                response.addHeader("Authorization", "Bearer "+ reissueAccessToken); // 클라이언트로 전송
                 }
                 else{
                     System.out.println("[ERR] Refresh Token 만료됨, 재로그인 요청");
